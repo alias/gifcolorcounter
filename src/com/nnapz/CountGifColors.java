@@ -4,6 +4,7 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.*;
 import java.io.*;
+import java.net.URLEncoder;
 import java.text.DecimalFormat;
 import java.util.*;
 
@@ -33,6 +34,10 @@ public class CountGifColors {
                 print("Look for Files in " + myDir.getAbsolutePath());
                 files = getFilesFromDir(myDir);
             } else {
+                if (args[0].contains(" ")) {
+                    print("PLS use arguments without spaces!");
+                    System.exit(1);
+                }
                 File inFile = new File(args[0]);
                 if (inFile.isDirectory()) {
                     print("Look for Files in " + inFile.getAbsolutePath());
@@ -52,6 +57,10 @@ public class CountGifColors {
             HashSet<File> generatedFiles = new HashSet<>();
             for (File file : files) {
                 try {
+                    if (file.getName().contains("#") || file.getName().contains("?") || file.getName().contains("&")) {
+                        print("  ERROR: dont use #/&/? in filenames!");
+                        continue;
+                    }
                     final File newFile = processOneImage(file);
                     if (newFile != null) generatedFiles.add(newFile);
                 } catch (Exception ex) {
@@ -167,7 +176,7 @@ public class CountGifColors {
         OneImageFile html = new OneImageFile();
         html.append("<h2>").append(file.getName()).append("</h2>");
         html.append("<div>").append(colors.length).append(" Colors, ").append(w).append("x").append(h).append(" Pixels").append("</div>");
-        html.append("<div class='cc_img'><img src='").append(file.getName()).append("'/></div>");
+        html.append("<div class='cc_img'><img src='").append(URLEncoder.encode(file.getName(), "UTF-8")).append("'/></div>");
         html.append("<table class='cc_colortable'><tr><th>Color</th><th>Count</th><th>Percentage</th></tr>");
         debug("   totalPixels = " + totalPixels);
         int inxCount = 0;
@@ -243,8 +252,8 @@ public class CountGifColors {
                     .append("</style></head>\n<body>");
         }
 
-        void appendFile(File file) {
-            append("<a href='").append(file.getName()).append("'>").append(file.getName()).append("</a>")
+        void appendFile(File file) throws UnsupportedEncodingException {
+            append("<a href='").append(URLEncoder.encode(file.getName(), "UTF8")).append("'>").append(file.getName()).append("</a>")
                     .append(" ").append(file.length() / 1024).append(" kB").append(" ")
                     .append(new Date(file.lastModified()))
                     .append("<br>");
