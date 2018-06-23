@@ -4,6 +4,7 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.*;
 import java.io.*;
+import java.text.DecimalFormat;
 import java.util.*;
 
 /**
@@ -18,6 +19,7 @@ import java.util.*;
 public class CountGifColors {
 
     private static final boolean DEBUG = false;
+    private static DecimalFormat percentageFormat = new DecimalFormat("0.000");
 
     /**
      * @param args a file name or a directory name. If a directory is given and more than one file is found there, a
@@ -83,15 +85,15 @@ public class CountGifColors {
     private static File processOneImage(File file) throws IOException {
 
         final String fileName = file.getName();
-        File outFile = null;  // set later if all goes well;
+        File outFile;  // set later if all goes well;
         print(" Process " + fileName);
-        HashMap<Byte, Integer> colorCount = new HashMap<Byte, Integer>();
+        HashMap<Byte, Integer> colorCount = new HashMap<>();
 
         // try to unpack the image with java's base libraries
         BufferedImage image = ImageIO.read(file);
         ColorModel colorModel = image.getColorModel();
         debug("Colormodel: " + colorModel);
-        IndexColorModel indexColorModel = null;
+        IndexColorModel indexColorModel;
         if (colorModel instanceof IndexColorModel) {
             indexColorModel = (IndexColorModel) colorModel;
         } else {
@@ -101,7 +103,7 @@ public class CountGifColors {
 
         final WritableRaster raster = image.getRaster();
         DataBuffer dataBuffer = raster.getDataBuffer();
-        DataBufferByte dataBufferByte = null;
+        DataBufferByte dataBufferByte;
         if (dataBuffer instanceof DataBufferByte) {
             dataBufferByte = (DataBufferByte) dataBuffer;
         } else {
@@ -155,7 +157,7 @@ public class CountGifColors {
 
         // output
         final Set<Byte> colorCountSet = colorCount.keySet();
-        final Byte[] colors = (Byte[]) colorCountSet.toArray(new Byte[colorCount.size()]);
+        final Byte[] colors = colorCountSet.toArray(new Byte[colorCount.size()]);
         Arrays.sort(colors);
         debug("   colors = " + colors.length);
         if (colors.length == 0) {
@@ -168,22 +170,24 @@ public class CountGifColors {
         html.append("<div class='cc_img'><img src='").append(file.getName()).append("'/></div>");
         html.append("<table class='cc_colortable'><tr><th>Color</th><th>Count</th><th>Percentage</th></tr>");
         debug("   totalPixels = " + totalPixels);
+        int inxCount = 0;
         for (int key : colors) {
             int color = indexColorModel.getRGB(key);
             Color c = new Color(color);
             int inx = key < 0 ? -key + 254 : key;
             final Integer pixelCount = colorCount.get((byte) key);
             final String htmlColorCode = pad(Integer.toHexString(c.getRed()), 2) + pad(Integer.toHexString(c.getGreen()), 2) + pad(Integer.toHexString(c.getBlue()), 2);
-            final long percentage = Math.round((double) pixelCount / (double) totalPixels * 100);
+            final double percentage = (double) pixelCount / (double) totalPixels * 100.0;
             debug((
                     "Color #" + inx + ": " + pixelCount + " Pixels, =" + percentage + "% " +
                             //      " #" + Integer.toHexString(color)) +
                             " HTML-Color: #" + htmlColorCode));
             html.append("<tr>")
-                    .append("<td class='cc_color' bgcolor='").append(htmlColorCode).append("' color>#").append(htmlColorCode).append("</td>")
+                    .append("<td class='cc_color' bgcolor='").append(htmlColorCode).append("'>").append(inxCount).append(". #").append(htmlColorCode).append("</td>")
                     .append("<td>").append(pixelCount).append("<td>")
-                    .append("<td>").append(percentage).append("</td>")
+                    .append("<td>").append(percentageFormat.format(percentage)).append("</td>")
                     .append("</tr>");
+            inxCount++;
         }
         html.append("</table>");
         outFile = html.write(file);
@@ -201,12 +205,7 @@ public class CountGifColors {
 
     // helper to list all gif's
     private static File[] getFilesFromDir(File dir) {
-        return dir.listFiles(new FileFilter() {
-            @Override
-            public boolean accept(File file) {
-                return file.getName().toLowerCase().endsWith("gif");
-            }
-        });
+        return dir.listFiles(file -> file.getName().toLowerCase().endsWith("gif"));
     }
 
     // helper to simplify html file creation a bit without using external libs
